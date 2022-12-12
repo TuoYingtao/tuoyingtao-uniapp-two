@@ -6,3 +6,10 @@ export function test(params) {
         params: params,
     })
 }
+
+export function userInfoTest(params) {
+    return request.get({
+        url: '/user/info',
+        params: params,
+    })
+}

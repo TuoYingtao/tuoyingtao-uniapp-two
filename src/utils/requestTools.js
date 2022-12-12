@@ -1,6 +1,10 @@
 import { request } from "@/utils/request";
 import { setToken } from "@/utils/storage";
 
+/**
+ * 静默登录
+ * @returns {Promise<unknown>}
+ */
 export function silenceAuthorizedLogin() {
   const requestInstance =  request.getRequest();
   return new Promise((resolve, reject) => {
