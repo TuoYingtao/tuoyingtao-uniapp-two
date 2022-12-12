@@ -1,7 +1,7 @@
-import {request} from "@/utils/request";
+import { request } from "@/utils/request";
 
 export function test(params) {
-    return request.get({
+    return request.post({
         url: '/index',
         params: params,
     })

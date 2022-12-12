@@ -1,17 +1,23 @@
 import merge from 'lodash/merge';
 import isString from 'lodash/isString';
-import beforeRequest from "./beforeRequest.js";
-import afterResponse from "./afterResponse.js";
+import { NetworkError, RequestError, ResponseError } from "./ResponseErrorHandler.js";
 import { VRequest } from "@/utils/request/Request";
 import { getToken } from "../storage";
 import { joinTimestamp, setObjToUrlParams } from "./requestUtils";
+import { CONTENT_TYPE_MAP, DATA_TYPE_MAP, RESPONSE_TYPE_MAP } from "@/utils/request/RequestConstant";
+import { silenceAuthorizedLogin } from "@/utils/requestTools";
 
 // 如果是mock模式 或 没启用直连代理 就不配置HOST 会走本地Mock拦截
 const HOST = process.env.VUE_APP_BASE_API;
 
 const transform = {
 
-  // 响应处理
+  /**
+   * 响应处理
+   * @param res 请求响应对象
+   * @param options Request配置参数
+   * @returns {*}
+   */
   transformRequestHook: (res, options) => {
     const { isTransformResponse, isTransformCodeResponse, isReturnNativeResponse } = options;
 
@@ -30,9 +36,9 @@ const transform = {
       return res.data;
     }
 
-    const { data } = res;
+    const { config, data } = res;
     if (!data) {
-      throw new Error('请求接口错误');
+      throw new ResponseError('请求接口错误', config.url, data.status, data, res);
     }
     const { code, msg } = data;
     const hasSuccess = data && code == 200;
@@ -43,14 +49,22 @@ const transform = {
       }
       return data.data;
     }
-    
-    if (code == 401) {
-      // TODO token 凭证失效处理
+
+    // TODO token 凭证失效处理
+    if (code == 402) {
+      silenceAuthorizedLogin().then(res => {
+        console.log(res)
+      });
     }
-    throw new Error(`${msg || '未知错误'}`);
+    throw new ResponseError(`${msg || '未知错误'}`, config.url, data.status, data, res);
   },
 
-  // 请求前置处理
+  /**
+   * 请求前置处理
+   * @param config Request请求参数
+   * @param options Request配置参数
+   * @returns {*}
+   */
   beforeRequestHook: (config, options) => {
     const { apiUrl, isJoinPrefix, urlPrefix, joinParamsToUrl, joinTime = true } = options;
     // 添加接口前缀
@@ -93,10 +107,15 @@ const transform = {
     return config;
   },
 
-  // 请求前的拦截器
+  /**
+   * 请求前的拦截器
+   * @param config Request请求参数
+   * @param options Request配置参数
+   * @returns {{header}|*}
+   */
   requestInterceptors: (config, options) => {
-    // const token = getToken()
-    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NzMzMzkzMDksInN1YiI6IueUqOaIt-WHreivgSIsIm5iZiI6MTY3MDc0NzMxMSwiYXVkIjoidXNlciIsImlhdCI6MTY3MDc0NzMwOSwianRpIjoiNGRlYTQ0NTExZDMyNjI5MTVmNGJhNTBkZmU4ZjJiNDMiLCJpc3MiOiJhbGFuZyIsInN0YXR1cyI6MSwiZGF0YSI6eyJ1c2VyX2lkIjo4MDAwNDd9fQ.uhlGZr2v6rvy9_Jnh4Qx-cVs5Rcx0Zsicx8ZjxBcY-M';
+    const token = getToken();
+    // const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NzMzMzkzMDksInN1YiI6IueUqOaIt-WHreivgSIsIm5iZiI6MTY3MDc0NzMxMSwiYXVkIjoidXNlciIsImlhdCI6MTY3MDc0NzMwOSwianRpIjoiNGRlYTQ0NTExZDMyNjI5MTVmNGJhNTBCJpc3MiOiJhbGFuZyIsInN0YXR1cyI6MSwiZGF0YSI6eyJ1c2VyX2lkIjo4MDAwNDd9fQ.uhlGZr2v6rvy9_Jnh4Qx-cVs5Rcx0Zsicx8ZjxBcY-M';
     config.header = {};
     if (token && options.requestOptions.withToken != false) {
       config.header[options.requestOptions.fieldToken] = options.requestOptions.authenticationScheme
@@ -105,9 +124,9 @@ const transform = {
     }
     const header = config.header || options.headers;
     const contentType = header['Content-Type'] || header['content-type'];
-    if (config.method.toUpperCase() === "POST" 
-        && contentType !== 'application/x-www-form-urlencoded;charset=utf-8' ) {
-      config.header['Content-Type'] = 'application/x-www-form-urlencoded;charset=UTF-8';
+    if (config.method.toUpperCase() === "POST"
+        && contentType !== CONTENT_TYPE_MAP.formData ) {
+      config.header['Content-Type'] = CONTENT_TYPE_MAP.formData;
     }
     config.timeout = options.timeout;
     config.withCredentials = options.withCredentials;
@@ -116,20 +135,35 @@ const transform = {
     return config;
   },
 
-  // 响应拦截器
+  /**
+   * 响应拦截器
+   * @param error Request 请求规范错误信息
+   * @param response Request 请求响应对象
+   * @param conf Request请求参数
+   * @returns {*&{config: *}}
+   */
   responseInterceptors: ([error, response], conf) => {
+    const requestConfig = { config: conf }
     if (error && error.errMsg) {
-      throw new Error(error.errMsg)
+      if (error.errMsg == "request:fail") {
+        throw new NetworkError('网络连接异常', requestConfig);
+      }
+      throw new NetworkError(error.errMsg ?? '未定义的请求错误', requestConfig);
     } else {
       if (response.statusCode != 200) {
-        response.isRetry = true;
+        requestConfig.isRetry = true;
+        throw new RequestError(
+          `Request fail with status code ${response.statusCode} domain name addresses ${conf.url}`, requestConfig)
       }
-      response.config = conf;
-      return response;
+      return { ...response, ...requestConfig };
     }
   },
 
-  // 响应错误拦截
+  /**
+   * 响应错误拦截
+   * @param error Request 请求错误信息体
+   * @returns {Promise<never>|Promise<void>}
+   */
   responseInterceptorsCatch: (error) => {
     const { config } = error;
     if (!config || !config.requestOptions.retry) return Promise.reject(error);
@@ -146,6 +180,11 @@ const transform = {
 
 }
 
+/**
+ * 创建 Request 请求实例对象
+ * @param options Request配置参数
+ * @returns {VRequest}
+ */
 function createRequest(options) {
   return new VRequest(merge({
     // 超时时间
@@ -153,11 +192,11 @@ function createRequest(options) {
     // 携带Cookie
     withCredentials: true,
     // 如果设为 json，会尝试对返回的数据做一次 JSON.parse
-    dataType: 'json',
+    dataType: DATA_TYPE_MAP.json,
     // 设置响应的数据类型。合法值：text、arraybuffer
-    responseType: 'text',
+    responseType: RESPONSE_TYPE_MAP.text,
     // 头信息
-    headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+    headers: { 'Content-Type': CONTENT_TYPE_MAP.json },
     // 请求数据
     transform,
     requestOptions: {
@@ -195,21 +234,3 @@ function createRequest(options) {
 }
 
 export const request = createRequest();
-
-export default async (config) => {
-  config = await beforeRequest(config);
-  return uni.request(config).then(([error, response]) => {
-    return afterResponse(config, error, response);
-  });
-};
-
-export const upload = async (config) => {
-  config.is_upload = true;
-  config = await beforeRequest(config);
-  return uni.uploadFile(config).then(([error, response]) => {
-    try {
-      response.data = JSON.parse(response.data);
-    } catch (e) { }
-    return afterResponse(config, error, response);
-  });
-};

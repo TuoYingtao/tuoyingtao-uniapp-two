@@ -1,4 +1,3 @@
-
 export function joinTimestamp(join, result, isPrefix = true) {
     if (!join) return result ? '' : {};
     const now = new Date().getTime();
