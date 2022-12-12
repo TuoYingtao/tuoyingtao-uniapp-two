@@ -10,6 +10,16 @@ import { silenceAuthorizedLogin } from "@/utils/requestTools";
 // 如果是mock模式 或 没启用直连代理 就不配置HOST 会走本地Mock拦截
 const HOST = process.env.VUE_APP_BASE_API;
 
+let requestQueue = [];
+let isSilenceLock = false;
+
+const onAccessTokenFetched = () => {
+  console.log(requestQueue)
+  isSilenceLock = false;
+  requestQueue.forEach((callback) => callback())
+  requestQueue = [];
+}
+
 const transform = {
 
   /**
@@ -21,42 +31,49 @@ const transform = {
   transformRequestHook: (res, options) => {
     const { isTransformResponse, isTransformCodeResponse, isReturnNativeResponse } = options;
 
-    const method = res.config.method.toUpperCase();
-    if (res.status == 204 || method === 'PATCH') {
-      return res.data;
-    }
-
-    // 是否返回原生响应头 比如：需要获取响应头时使用该属性
-    if (isReturnNativeResponse) {
-      return res;
-    }
-
-    // 不进行任何处理，直接返回 用于页面代码可能需要直接获取code，data，message这些信息时开启
-    if (!isTransformResponse) {
-      return res.data;
-    }
-
-    const { config, data } = res;
-    if (!data) {
-      throw new ResponseError('请求接口错误', config.url, data.status, data, res);
-    }
-    const { code, msg } = data;
-    const hasSuccess = data && code == 200;
-    if (hasSuccess) {
-      // 不进行任何处理，直接返回 用于页面代码可能需要直接获取code，data，message这些信息时开启
-      if (!isTransformCodeResponse) {
-        return data;
+    return new Promise((resolve, reject) => {
+      const method = res.config.method.toUpperCase();
+      if (res.status == 204 || method === 'PATCH') {
+        resolve(res.data);
       }
-      return data.data;
-    }
 
-    // TODO token 凭证失效处理
-    if (code == 402) {
-      silenceAuthorizedLogin().then(res => {
-        console.log(res)
-      });
-    }
-    throw new ResponseError(`${msg || '未知错误'}`, config.url, data.status, data, res);
+      // 是否返回原生响应头 比如：需要获取响应头时使用该属性
+      if (isReturnNativeResponse) {
+        resolve(res);
+      }
+
+      // 不进行任何处理，直接返回 用于页面代码可能需要直接获取code，data，message这些信息时开启
+      if (!isTransformResponse) {
+        resolve(res.data);
+      }
+
+      const { config, data } = res;
+      if (!data) {
+        throw new ResponseError('请求接口错误', config.url, data.status, data, res);
+      }
+      const { code, msg } = data;
+      const hasSuccess = data && code == 200;
+      if (hasSuccess) {
+        // 不进行任何处理，直接返回 用于页面代码可能需要直接获取code，data，message这些信息时开启
+        if (!isTransformCodeResponse) {
+          resolve(data);
+        }
+        resolve(data.data);
+      }
+      // TODO token 凭证失效处理
+      if (code == 401) {
+        config.isAuthorized = true;
+        if (!isSilenceLock) {
+          isSilenceLock = true;
+          silenceAuthorizedLogin().then((res) => onAccessTokenFetched());
+        }
+        requestQueue.push(() => {
+          resolve(request.executor(config));
+        });
+      } else {
+        throw new ResponseError(`${msg || '未知错误'}`, config.url, data.status, data, res);
+      }
+    })
   },
 
   /**
@@ -115,7 +132,6 @@ const transform = {
    */
   requestInterceptors: (config, options) => {
     const token = getToken();
-    // const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NzMzMzkzMDksInN1YiI6IueUqOaIt-WHreivgSIsIm5iZiI6MTY3MDc0NzMxMSwiYXVkIjoidXNlciIsImlhdCI6MTY3MDc0NzMwOSwianRpIjoiNGRlYTQ0NTExZDMyNjI5MTVmNGJhNTBCJpc3MiOiJhbGFuZyIsInN0YXR1cyI6MSwiZGF0YSI6eyJ1c2VyX2lkIjo4MDAwNDd9fQ.uhlGZr2v6rvy9_Jnh4Qx-cVs5Rcx0Zsicx8ZjxBcY-M';
     config.header = {};
     if (token && options.requestOptions.withToken != false) {
       config.header[options.requestOptions.fieldToken] = options.requestOptions.authenticationScheme

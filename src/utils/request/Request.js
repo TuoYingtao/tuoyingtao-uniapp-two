@@ -1,5 +1,6 @@
 import cloneDeep from 'lodash/cloneDeep';
 import isFunction from 'lodash/isFunction';
+import isUndefined from 'lodash/isUndefined';
 
 /**
  * Request 请求对象
@@ -165,16 +166,20 @@ export class VRequest {
    */
   async executor(config, options) {
     let conf = config || {};
-    if (conf && !conf.retryCount) {
+    if (conf && isUndefined(conf.retryCount) && isUndefined(conf.isAuthorized)) {
       conf = await this.#privateSetupBeforeHook(config, options);
+    }
+    if ((conf && isUndefined(conf.retryCount)) || !isUndefined(conf.isAuthorized)) {
       conf = await this.#privateSetupInterceptors(conf, options);
     }
     const transform = this.#privateGetTransform();
     const { responseInterceptors, responseInterceptorsCatch, transformRequestHook } = transform;
-    return uni.request(conf).then(([error, response]) => {
+    const requestTask = uni.request(conf);
+    return requestTask.then(async ([error, response]) => {
       try {
         const res = responseInterceptors([error, response], conf);
-        return transformRequestHook(res, conf.requestOptions);
+        const data = await transformRequestHook(res, conf.requestOptions);
+        return data;
       } catch (e) {
         console.error(e)
         if (e.requestConfig && e.requestConfig.isRetry) {
@@ -185,7 +190,6 @@ export class VRequest {
       }
     }).finally(() => {
       // TODO 最终执行处理 可在这里关闭对话框等操作
-      console.log('finally')
     });
   }
 }

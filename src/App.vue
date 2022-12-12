@@ -17,8 +17,13 @@
         console.log(res)
       });
       const requestInstance = request.getRequest();
-      requestInstance({ method: 'get', url: '/index' }).then(res => {
-        console.log(res)
+      requestInstance({ method: 'get', url: '/user/info' }).then(res => {
+        console.log('地址----1', res)
+        console.log('地址用户信息-----1', res.user)
+      })
+      requestInstance({ method: 'get', url: '/user/info' }).then(res => {
+        console.log('地址-----2', res)
+        console.log('地址用户信息------2', res.user)
       })
 
 		},
