@@ -1,4 +1,4 @@
-import store from '@/store';
+import qs from 'qs';
 import cloneDeep from 'lodash/cloneDeep';
 import { navigateTo } from '@/utils/navigate';
 

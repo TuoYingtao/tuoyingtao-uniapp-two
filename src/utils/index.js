@@ -49,52 +49,41 @@ export function isEmptyObj(obj) {
 }
 
 /**
- * 节流
+ * 节流函数
+ * @param func 执行方法
+ * @param delay 延迟时间（毫秒）默认：1000
+ * @returns {function(): void}
  */
-export function throttle(fn, tapTime = 1000) {
-  var lastTime = 0;
+export function throttle(func, delay = 1000) {
+  let timer = null;
+  let startTime = Date.now();
   return function() {
-    var nowTime = +new Date();
-    if (nowTime - lastTime > tapTime) {
-      fn.apply(this, arguments)
-      lastTime = nowTime
+    const curTime = Date.now();
+    const remaining = delay - (curTime - startTime);
+    clearTimeout(timer);
+    if (remaining <= 0) {
+      func.apply(this, arguments);
+      startTime = Date.now();
+    } else {
+      timer = setTimeout(() => false, remaining);
     }
   }
 }
 
 /**
- * 节流函数
- * @description 本函数接收一个Promise，当Promise在pending状态中，会自动阻止下次继续触发，在finally后释放。同时允许传入一个时限，如果达到时限Promise还未finally，会执行onTime回调
- * @param {string|number} promise_id 节流ID，同ID的内部节流，不同ID的互不干扰
- * @param {Function} promiseFunction 要节流的Promise函数，该函数应该返回一个Promise
- * @param {number} time x毫秒后触发onTime，如果在此之前Promise已经finally，则不执行onTime
- * @param {Function} onTime 事件
- * @returns
+ * 防抖函数
+ * @param func 执行方法
+ * @param wait 等待时间（毫秒）默认：600
+ * @returns {function(...[*]=): void}
  */
-let _promiseThrottleMap = {};
-export const promiseThrottle = (promise_id, promiseFunction, time = 500, onTime = null) => {
-  if (_promiseThrottleMap[promise_id] === true) return Promise.reject(Error('请求正在进行中'));
-
-  let timeout = undefined;
-  if (typeof time == 'number') timeout = setTimeout(onTime, time);
-
-  _promiseThrottleMap[promise_id] = true;
-  return promiseFunction().finally(() => {
-    _promiseThrottleMap[promise_id] = false;
-    clearTimeout(timeout)
-  });
-}
-
-/**
- * 防抖
- */
-export function debounce(func, delay = 300) {
-  let timer = null
-  return function(...args) {
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => {
-      func.apply(this, args)
-    }, delay)
+export function debounce(func, wait = 600) {
+  let timeout = null
+  return function() {
+    if (timeout !== null) clearTimeout(timeout);
+    const execute = () => {
+      func.apply(this, arguments)
+    }
+    timeout = setTimeout(execute, wait);
   }
 }
 
@@ -152,26 +141,47 @@ export function regName(params, min = 2, max = 10) {
 
 /**
  * 解析时间戳
- * @param param 时间戳
+ * @param time 时间戳
  * @param format 时间戳美化格式
  * @returns {string}
  */
-export function parseTime(param, format = "${yyyy-MM-dd hh:mm:ss}") {
-  if (param == null || param == "" || param == "undefined") return "";
-  const date = new Date(Number(param) * 1000);
-  const y = date.getFullYear();
-  const M = (date.getMonth() + 1) < 10 ? "0" + (date.getMonth() + 1) : date.getMonth() + 1;
-  const d = date.getDate() < 10 ? "0" + date.getDate() : date.getDate();;
-  const h = date.getHours() < 10 ? "0" + date.getHours() : date.getHours();
-  const m = date.getMinutes() < 10 ? "0" + date.getMinutes() : date.getMinutes();
-  const s = date.getSeconds() < 10 ? "0" + date.getSeconds() : date.getSeconds();
-  if (format == "${yyyy-MM-dd hh:mm:ss}") {
-    return `${y}-${M}-${d} ${h}:${m}:${s}`;
-  } else if (format == "${yyyy-MM-dd}") {
-    return `${y}-${M}-${d}`;
-  } else if (format == "${hh:mm:ss}") {
-    return `${h}:${m}:${s}`;
+export function parseTime(time, pattern = "yyyy-MM-dd hh:mm:ss") {
+  if (arguments.length === 0 || !time) {
+    return null;
   }
+  const format = pattern || '{y}-{m}-{d} {h}:{i}:{s}';
+  let date;
+  if (typeof time === 'object') {
+    date = time;
+  } else {
+    if ((typeof time === 'string') && (/^[0-9]+$/.test(time))) {
+      time = parseInt(time);
+    } else if (typeof time === 'string') {
+      time = time.replace(new RegExp(/-/gm), '/');
+    }
+    if ((typeof time === 'number') && (time.toString().length === 10)) {
+      time = time * 1000;
+    }
+    date = new Date(time);
+  }
+  const formatObj = {
+    y: date.getFullYear(),
+    m: date.getMonth() + 1,
+    d: date.getDate(),
+    h: date.getHours(),
+    i: date.getMinutes(),
+    s: date.getSeconds(),
+    a: date.getDay(),
+  };
+  const time_str = format.replace(/{(y|m|d|h|i|s|a)+}/g, (result, key) => {
+    let value = formatObj[key];
+    if (key === 'a') { return ['日', '一', '二', '三', '四', '五', '六'][value] }
+    if (result.length > 0 && value < 10) {
+      value = '0' + value;
+    }
+    return value || 0;
+  });
+  return time_str;
 }
 
 /**

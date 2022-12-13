@@ -9,6 +9,7 @@ import RelativeTime from 'dayjs/plugin/relativeTime'
 import isoWeek from 'dayjs/plugin/isoWeek'
 
 import { navigateTo, navigateBack } from '@/utils/navigate';
+import filters from '@/utils/filters';
 
 // 设置dayjs语言
 dayjs.locale('zh-cn')
@@ -21,6 +22,8 @@ Vue.prototype.$navigateBack = navigateBack;
 Vue.config.productionTip = false
 
 App.mpType = 'app'
+
+Vue.use(filters);
 
 
 const app = new Vue({
