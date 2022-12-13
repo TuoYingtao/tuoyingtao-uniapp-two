@@ -59,7 +59,16 @@
         "setting" : {
             "urlCheck" : false
         },
-        "usingComponents" : true
+        "usingComponents" : true,
+        "debug": true,
+        /* 是否开启uni统计 */
+        "uniStatistics": {
+            "enable": true
+        },
+        /* 开启分包优化 */
+        "optimization": {
+            "subPackages": true
+        }
     },
     "mp-alipay" : {
         "usingComponents" : true

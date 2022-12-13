@@ -7,6 +7,7 @@ import * as dayjs from 'dayjs'
 import duration from 'dayjs/plugin/duration'
 import RelativeTime from 'dayjs/plugin/relativeTime'
 import isoWeek from 'dayjs/plugin/isoWeek'
+import uView from 'uview-ui'
 
 import { navigateTo, navigateBack } from '@/utils/navigate';
 import filters from '@/utils/filters';
@@ -24,6 +25,7 @@ Vue.config.productionTip = false
 App.mpType = 'app'
 
 Vue.use(filters);
+Vue.use(uView);
 
 
 const app = new Vue({

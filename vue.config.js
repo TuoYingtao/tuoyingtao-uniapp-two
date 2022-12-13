@@ -50,6 +50,7 @@ if (process.env.ANALYZER) {
 }
 
 module.exports = {
+  transpileDependencies: ['uview-ui'],
   // 用于放置生成的静态资源 (js、css、img、fonts) 不可更改
   assetsDir: 'static',
   // chainWebpack 通过链式编程的形式，来修改默认的 webpack 配置(更细粒度的配置)

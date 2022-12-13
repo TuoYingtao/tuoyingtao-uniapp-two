@@ -56,10 +56,33 @@ export default {
     mounted() {},
 };
 </script>
-<style lang="less">
+<style lang="scss">
 .vi-t-button-demo {
     .custom-hover {
         opacity: 0.2;
+    }
+    .my-10 {
+      margin-top: 2.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .px-4 {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+    .space-y-4 {
+      --tw-space-y-reverse: 0;
+      margin-top: calc(1rem * calc(1 - 0));
+      margin-bottom: calc(1rem * 0);
+    }
+    .space-x-2 {
+      --tw-space-x-reverse: 0;
+      margin-right: calc(0.5rem * 0);
+      margin-left: calc(0.5rem * calc(1 - 0));
+    }
+    .space-y-2 {
+      --tw-space-y-reverse: 0;
+      margin-top: calc(0.5rem * calc(1 - 0));
+      margin-bottom: calc(0.5rem * 0);
     }
 }
 </style>

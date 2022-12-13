@@ -76,8 +76,8 @@ export default {
         },
         // 主色
         color: {
-            type: String,
-            default: "#F87201",
+          type: String,
+          default: "#007aff",
         },
         // 文字颜色
         textColor: {
@@ -137,7 +137,6 @@ export default {
     computed: {
         style() {
             if (this.pure) return this.pureStyle;
-
             const backgroundColor = this.plain ? this.textColor : this.color;
             const color = this.plain ? this.color : this.textColor;
             const border = this.plain ? `2rpx solid ${this.color}` : `2rpx solid ${this.color}`;
@@ -156,14 +155,74 @@ export default {
 .cp-t-button {
     box-sizing: border-box;
     &.disabled {
-        opacity: 0.5;
+      opacity: 0.5;
     }
-    &:not(.disabled):not(.loading).actived {
-        opacity: 0.8;
-    }
-    // 移除button默认样式
-    &::after {
-        border: none;
-    }
+
+  &:not(.disabled):not(.loading).actived {
+    opacity: 0.8;
+  }
+
+  // 移除button默认样式
+  &::after {
+    border: none;
+  }
+}
+
+.leading-tight {
+  line-height: 1.25;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.text-base {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.text-xl {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.px-6 {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.px-7 {
+  padding-left: 1.75rem;
+  padding-right: 1.75rem;
+}
+
+.px-10 {
+  padding-left: 2.5rem;
+  padding-right: 2.5rem;
+}
+
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.py-3 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
 }
 </style>
